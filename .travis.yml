@@ -1,0 +1,17 @@
+language: cpp
+compiler:
+  - gcc
+  - clang
+before_install:
+  - sudo apt-get update -qq
+  - sudo apt-get install -y valgrind
+env:
+  matrix:
+   - BUILD_CXX=0
+   - BUILD_CXX=1
+   - BUILD_CXX=0 CFLAGS="-O3"
+   - BUILD_CXX=1 CFLAGS="-O3"
+   - BUILD_CXX=0 TESTRUN_WRAPPER='valgrind -q --error-exitcode=126 --track-origins=yes --leak-check=full' TESTRUN_NAME=memcheck
+   - BUILD_CXX=1 TESTRUN_WRAPPER='valgrind -q --error-exitcode=126 --track-origins=yes --leak-check=full' TESTRUN_NAME=memcheck
+script:
+ - make -C test clean && make -j$(nproc) -C test
