@@ -30,12 +30,17 @@ extern "C" {
 
 #include <stddef.h>
 
+/* inject the color info in the lowest bit of the parent pointer  */
+#define RB_PARENT_COLOR_COMBINATION
+
 #if defined(__GNUC__)
 #define RBTREE_TYPEOF_USE 1
+#define RB_NODE_ALIGNED __attribute__ ((aligned(sizeof(unsigned long))))
 #endif
 
 #if defined(_MSC_VER)
 #define __inline__ __inline
+#define RB_NODE_ALIGNED __declspec(align(sizeof(unsigned long)))
 #endif
 
 /**
@@ -58,8 +63,20 @@ extern "C" {
 #endif
 
 /**
+ * enum rb_node_color - type of node in rb_tree
+ * @RB_RED: node is red (helper node to extend black node)
+ * @RB_BLACK: node is black
+ */
+enum rb_node_color {
+	RB_RED = 0,
+	RB_BLACK = 1
+};
+
+/**
  * struct rb_node - node of a red-black tree
  * @parent: pointer to the parent node in the tree
+ * @color: color of the node
+ * @parent_color: combination of @parent and @color (lowest bit)
  * @left: pointer to the left child in the tree
  * @right: pointer to the right child in the tree
  *
@@ -76,10 +93,15 @@ extern "C" {
  * can be used to calculate the object address from the address of the node.
  */
 struct rb_node {
+#ifndef RB_PARENT_COLOR_COMBINATION
 	struct rb_node *parent;
+	enum rb_node_color color;
+#else
+	unsigned long parent_color;
+#endif
 	struct rb_node *left;
 	struct rb_node *right;
-};
+} RB_NODE_ALIGNED;
 
 /**
  * struct rb_root - root of a red-black-tree
@@ -116,6 +138,101 @@ static __inline__ void INIT_RB_ROOT(struct rb_root *root)
 static __inline__ int rb_empty(const struct rb_root *root)
 {
 	return !root->node;
+}
+
+/**
+ * rb_parent() - Get parent of node
+ * @node: pointer to the rb node
+ *
+ * Return: rb parent node of @node
+ */
+static __inline__ struct rb_node *rb_parent(struct rb_node *node)
+{
+#ifndef RB_PARENT_COLOR_COMBINATION
+	return node->parent;
+#else
+	return (struct rb_node *)(node->parent_color & ~1lu);
+#endif
+}
+
+/**
+ * rb_set_parent() - Set parent of node
+ * @node: pointer to the rb node
+ * @parent: pointer to the new parent node
+ */
+static __inline__ void rb_set_parent(struct rb_node *node,
+				     struct rb_node *parent)
+{
+#ifndef RB_PARENT_COLOR_COMBINATION
+	node->parent = parent;
+#else
+	node->parent_color = (unsigned long)parent | (node->parent_color & 1lu);
+#endif
+}
+
+/**
+ * rb_color() - Get color of node
+ * @node: pointer to the rb node
+ *
+ * Return: color of @node
+ */
+static __inline__ enum rb_node_color rb_color(const struct rb_node *node)
+{
+#ifndef RB_PARENT_COLOR_COMBINATION
+	return node->color;
+#else
+	return (enum rb_node_color)(node->parent_color & 1lu);
+#endif
+}
+
+/**
+ * rb_set_color() - Set color of node
+ * @node: pointer to the rb node
+ * @color: new color of the node
+ */
+static __inline__ void rb_set_color(struct rb_node *node,
+				    enum rb_node_color color)
+{
+#ifndef RB_PARENT_COLOR_COMBINATION
+	node->color = color;
+#else
+	node->parent_color = (node->parent_color & ~1lu) | color;
+#endif
+}
+
+/**
+ * rb_set_parent_color() - Set parent and color of node
+ * @node: pointer to the rb node
+ * @parent: pointer to the new parent node
+ * @color: new color of the node
+ */
+static __inline__ void rb_set_parent_color(struct rb_node *node,
+					   struct rb_node *parent,
+					   enum rb_node_color color)
+{
+#ifndef RB_PARENT_COLOR_COMBINATION
+	node->parent = parent;
+	node->color = color;
+#else
+	node->parent_color = (unsigned long)parent | color;
+#endif
+}
+
+/**
+ * rb_is_red() - Check if node is red
+ * @node: Node to check
+ *
+ * Return: 0 when @node is NULL or not red, 1 if @node is red
+ */
+static __inline__ int rb_is_red(struct rb_node *node)
+{
+	if (!node)
+		return 0;
+
+	if (rb_color(node) == RB_RED)
+		return 1;
+	else
+		return 0;
 }
 
 /**
@@ -164,7 +281,7 @@ static __inline__ void rb_link_node(struct rb_node *node,
 				    struct rb_node *parent,
 				    struct rb_node **rb_link)
 {
-	node->parent = parent;
+	rb_set_parent_color(node, parent, RB_RED);
 	node->left = NULL;
 	node->right = NULL;
 
@@ -192,21 +309,21 @@ static __inline__ void rb_erase_node(struct rb_node *node, struct rb_root *root)
 
 	/* no child */
 	if (!node->left && !node->right) {
-		rb_change_child(node, NULL, node->parent, root);
+		rb_change_child(node, NULL, rb_parent(node), root);
 		return;
 	}
 
 	/* one child, left */
 	if (node->left && !node->right) {
-		node->left->parent = node->parent;
-		rb_change_child(node, node->left, node->parent, root);
+		rb_set_parent(node->left, rb_parent(node));
+		rb_change_child(node, node->left, rb_parent(node), root);
 		return;
 	}
 
 	/* one child, right */
 	if (!node->left && node->right) {
-		node->right->parent = node->parent;
-		rb_change_child(node, node->right, node->parent, root);
+		rb_set_parent(node->right, rb_parent(node));
+		rb_change_child(node, node->right, rb_parent(node), root);
 		return;
 	}
 
@@ -217,20 +334,20 @@ static __inline__ void rb_erase_node(struct rb_node *node, struct rb_root *root)
 
 	/* move right child of smallest one up */
 	if (smallest->right)
-		smallest->right->parent = smallest->parent;
-	rb_change_child(smallest, smallest->right, smallest->parent, root);
+		rb_set_parent(smallest->right, rb_parent(smallest));
+	rb_change_child(smallest, smallest->right, rb_parent(smallest), root);
 
 	/* exchange node with smallest */
-	smallest->parent = node->parent;
+	rb_set_parent_color(smallest, rb_parent(node), rb_color(node));
 
 	smallest->left = node->left;
-	smallest->left->parent = smallest;
+	rb_set_parent(smallest->left, smallest);
 
 	smallest->right = node->right;
 	if (smallest->right)
-		smallest->right->parent = smallest;
+		rb_set_parent(smallest->right, smallest);
 
-	rb_change_child(node, smallest, node->parent, root);
+	rb_change_child(node, smallest, rb_parent(node), root);
 }
 
 /**
@@ -293,7 +410,7 @@ static __inline__ struct rb_node *rb_next(struct rb_node *node)
 	}
 
 	/* otherwise check if we have a parent (and thus maybe siblings) */
-	parent = node->parent;
+	parent = rb_parent(node);
 	if (!parent)
 		return parent;
 
@@ -302,7 +419,7 @@ static __inline__ struct rb_node *rb_next(struct rb_node *node)
 	 */
 	while (parent && parent->right == node) {
 		node = parent;
-		parent = node->parent;
+		parent = rb_parent(node);
 	}
 
 	return parent;
@@ -328,7 +445,7 @@ static __inline__ struct rb_node *rb_prev(struct rb_node *node)
 	}
 
 	/* otherwise check if we have a parent (and thus maybe siblings) */
-	parent = node->parent;
+	parent = rb_parent(node);
 	if (!parent)
 		return parent;
 
@@ -337,7 +454,7 @@ static __inline__ struct rb_node *rb_prev(struct rb_node *node)
 	 */
 	while (parent && parent->left == node) {
 		node = parent;
-		parent = node->parent;
+		parent = rb_parent(node);
 	}
 
 	return parent;

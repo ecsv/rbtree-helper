@@ -40,7 +40,7 @@ static __inline__ void check_node_order(struct rb_node *node,
 	if (!node)
 		return;
 
-	assert(node->parent == parent);
+	assert(rb_parent(node) == parent);
 
 	check_node_order(node->left, node, skiplist, pos, size);
 
