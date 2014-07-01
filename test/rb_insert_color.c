@@ -21,61 +21,41 @@
  * THE SOFTWARE.
  */
 
-#ifndef __RBTREE_COMMON_TREEOPS_H__
-#define __RBTREE_COMMON_TREEOPS_H__
-
 #include "../rbtree.h"
 #include "common.h"
+#include "common-treeops.h"
+#include "common-treevalidation.h"
 #include <stddef.h>
 #include <stdint.h>
+#include <string.h>
 
-static __inline__ void rbitem_insert_unbalanced(struct rb_root *root,
-						struct rbitem *new_entry)
+static uint16_t values[256];
+
+static struct rbitem items[ARRAY_SIZE(values)];
+static uint8_t skiplist[ARRAY_SIZE(values)];
+
+int main(void)
 {
-	struct rb_node *parent = NULL;
-	struct rb_node **cur_nodep = &root->node;
-	struct rbitem *cur_entry;
+	struct rb_root root;
+	size_t i, j;
 
-	while (*cur_nodep) {
-		cur_entry = rb_entry(*cur_nodep, struct rbitem, rb);
+	for (i = 0; i < 256; i++) {
+		random_shuffle_array(values, (uint16_t)ARRAY_SIZE(values));
+		memset(skiplist, 1, sizeof(skiplist));
 
-		parent = *cur_nodep;
-		if (cmpint(&new_entry->i, &cur_entry->i) <= 0)
-			cur_nodep = &((*cur_nodep)->left);
-		else
-			cur_nodep = &((*cur_nodep)->right);
+		INIT_RB_ROOT(&root);
+		for (j = 0; j < ARRAY_SIZE(values); j++) {
+			items[j].i = values[j];
+			rbitem_insert_unbalanced(&root, &items[j]);
+			skiplist[values[j]] = 0;
+			rb_insert_color(&items[j].rb, &root);
+
+			check_root_order(&root, skiplist,
+					 (uint16_t)ARRAY_SIZE(skiplist));
+			check_depth(&root);
+			check_llrb_nodes(&root);
+		}
 	}
 
-	rb_link_node(&new_entry->rb, parent, cur_nodep);
+	return 0;
 }
-
-static __inline__ void rbitem_insert_balanced(struct rb_root *root,
-					      struct rbitem *new_entry)
-{
-	rbitem_insert_unbalanced(root, new_entry);
-	rb_insert_color(&new_entry->rb, root);
-}
-
-static __inline__ struct rbitem *rbitem_find(struct rb_root *root, uint16_t x)
-{
-	struct rb_node **cur_nodep = &root->node;
-	struct rbitem *cur_entry;
-	int res;
-
-	while (*cur_nodep) {
-		cur_entry = rb_entry(*cur_nodep, struct rbitem, rb);
-
-		res = cmpint(&x, &cur_entry->i);
-		if (res == 0)
-			return cur_entry;
-
-		if (res < 0)
-			cur_nodep = &((*cur_nodep)->left);
-		else
-			cur_nodep = &((*cur_nodep)->right);
-	}
-
-	return NULL;
-}
-
-#endif /* __RBTREE_COMMON_TREEOPS_H__ */

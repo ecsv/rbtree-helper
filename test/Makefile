@@ -37,6 +37,10 @@ TESTS_CXX_COMPATIBLE = \
  rb_prev \
  rb_link_node-prioqueue \
  rb_erase_node-prioqueue \
+ rb_insert_color \
+ rb_erase \
+ rb_insert-prioqueue \
+ rb_erase-prioqueue \
 
 TESTS_C_ONLY = \
 
