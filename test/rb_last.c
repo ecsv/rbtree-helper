@@ -38,7 +38,7 @@ int main(void)
 	struct rb_node *node;
 	struct rbitem *item;
 	size_t i, j;
-	uint16_t maxval;
+	uint16_t maxval = 0;
 
 	for (i = 0; i < 256; i++) {
 		random_shuffle_array(values, (uint16_t)ARRAY_SIZE(values));
