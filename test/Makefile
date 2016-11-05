@@ -82,13 +82,15 @@ $(TESTS_OK): %.ok: %
 	@$(TESTRUN_WRAPPER) ./$<
 	@touch $@
 
+$(TESTS): ../rbtree.c
+
 # standard build rules
 .SUFFIXES: .c
 .c:
 ifeq ("$(BUILD_CXX)", "1")
-	$(LINK.cc) $< $(LDLIBS) -o $@
+	$(LINK.cc) $< ../rbtree.c $(LDLIBS) -o $@
 else
-	$(LINK.c) $< $(LDLIBS) -o $@
+	$(LINK.c) $< ../rbtree.c $(LDLIBS) -o $@
 endif
 
 clean:
