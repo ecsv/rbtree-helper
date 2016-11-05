@@ -24,9 +24,10 @@
 #ifndef __RBTREE_COMMON_PRIOQUEUE_H__
 #define __RBTREE_COMMON_PRIOQUEUE_H__
 
+#include <stddef.h>
+
 #include "../rbtree.h"
 #include "common.h"
-#include <stddef.h>
 
 struct rb_prioqueue {
 	struct rb_root root;

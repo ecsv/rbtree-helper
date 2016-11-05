@@ -24,9 +24,10 @@
 #ifndef __RBTREE_COMMON_H__
 #define __RBTREE_COMMON_H__
 
-#include "../rbtree.h"
 #include <stddef.h>
 #include <stdint.h>
+
+#include "../rbtree.h"
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
 

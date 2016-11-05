@@ -21,13 +21,14 @@
  * THE SOFTWARE.
  */
 
+#include <stddef.h>
+#include <stdint.h>
+#include <string.h>
+
 #include "../rbtree.h"
 #include "common.h"
 #include "common-treeops.h"
 #include "common-treevalidation.h"
-#include <stddef.h>
-#include <stdint.h>
-#include <string.h>
 
 static uint16_t values[256];
 

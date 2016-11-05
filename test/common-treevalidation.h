@@ -24,11 +24,12 @@
 #ifndef __RBTREE_COMMON_TREEVALIDATION_H__
 #define __RBTREE_COMMON_TREEVALIDATION_H__
 
-#include "../rbtree.h"
-#include "common.h"
 #include <assert.h>
 #include <stddef.h>
 #include <stdint.h>
+
+#include "../rbtree.h"
+#include "common.h"
 
 struct min_max_depth {
 	size_t min;

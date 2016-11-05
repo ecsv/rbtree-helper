@@ -24,10 +24,11 @@
 #ifndef __RBTREE_COMMON_TREEOPS_H__
 #define __RBTREE_COMMON_TREEOPS_H__
 
-#include "../rbtree.h"
-#include "common.h"
 #include <stddef.h>
 #include <stdint.h>
+
+#include "../rbtree.h"
+#include "common.h"
 
 static __inline__ void rbitem_insert_unbalanced(struct rb_root *root,
 						struct rbitem *new_entry)

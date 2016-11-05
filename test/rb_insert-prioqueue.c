@@ -21,13 +21,14 @@
  * THE SOFTWARE.
  */
 
-#include "../rbtree.h"
-#include "common.h"
-#include "common-prioqueue.h"
 #include <assert.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
+
+#include "../rbtree.h"
+#include "common.h"
+#include "common-prioqueue.h"
 
 static uint16_t values[256];
 

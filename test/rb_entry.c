@@ -21,9 +21,10 @@
  * THE SOFTWARE.
  */
 
+#include <assert.h>
+
 #include "../rbtree.h"
 #include "common.h"
-#include <assert.h>
 
 int main(void)
 {

@@ -24,9 +24,10 @@
 #ifndef __RBTREE_COMMON_TREEPRINT_H__
 #define __RBTREE_COMMON_TREEPRINT_H__
 
+#include <stdio.h>
+
 #include "../rbtree.h"
 #include "common.h"
-#include <stdio.h>
 
 static __inline__ void printnode(const struct rb_node *node, size_t depth,
 				 char prefix)

@@ -21,8 +21,9 @@
  * THE SOFTWARE.
  */
 
-#include "../rbtree.h"
 #include <assert.h>
+
+#include "../rbtree.h"
 
 static DEFINE_RBROOT(testtree);
 

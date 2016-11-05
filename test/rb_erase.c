@@ -21,15 +21,16 @@
  * THE SOFTWARE.
  */
 
-#include "../rbtree.h"
-#include "common.h"
-#include "common-treeops.h"
-#include "common-treevalidation.h"
 #include <assert.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include "../rbtree.h"
+#include "common.h"
+#include "common-treeops.h"
+#include "common-treevalidation.h"
 
 static uint16_t values[256];
 static uint16_t delete_items[ARRAY_SIZE(values)];
