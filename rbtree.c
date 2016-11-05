@@ -597,3 +597,113 @@ void rb_erase_color(struct rb_node *parent, struct rb_root *root)
 		parent = gparent;
 	}
 }
+
+/**
+ * rb_first() - Find leftmost rb node in tree
+ * @root: pointer to rb root
+ *
+ * Return: pointer to leftmost node. NULL when @root is empty.
+ */
+struct rb_node *rb_first(const struct rb_root *root)
+{
+	struct rb_node *node = root->node;
+
+	if (!node)
+		return node;
+
+	/* descend down via smaller/preceding child */
+	while (node->left)
+		node = node->left;
+
+	return node;
+}
+
+/**
+ * rb_last() - Find rightmost rb node in tree
+ * @root: pointer to rb root
+ *
+ * Return: pointer to rightmost node. NULL when @root is empty.
+ */
+struct rb_node *rb_last(const struct rb_root *root)
+{
+	struct rb_node *node = root->node;
+
+	if (!node)
+		return node;
+
+	/* descend down via larger/succeeding child */
+	while (node->right)
+		node = node->right;
+
+	return node;
+}
+
+/**
+ * rb_next() - Find successor node in tree
+ * @node: starting rb node for search
+ *
+ * Return: pointer to successor node. NULL when no successor of @node exist.
+ */
+struct rb_node *rb_next(struct rb_node *node)
+{
+	struct rb_node *parent;
+
+	/* there is a right child - next node must be the leftmost under it */
+	if (node->right) {
+		node = node->right;
+		while (node->left)
+			node = node->left;
+
+		return node;
+	}
+
+	/* otherwise check if we have a parent (and thus maybe siblings) */
+	parent = rb_parent(node);
+	if (!parent)
+		return parent;
+
+	/* go up the tree until the path connecting both is the left child
+	 * pointer and therefore the parent is the next node
+	 */
+	while (parent && parent->right == node) {
+		node = parent;
+		parent = rb_parent(node);
+	}
+
+	return parent;
+}
+
+/**
+ * rb_prev() - Find predecessor node in tree
+ * @node: starting rb node for search
+ *
+ * Return: pointer to predecessor node. NULL when no predecessor of @node exist.
+ */
+struct rb_node *rb_prev(struct rb_node *node)
+{
+	struct rb_node *parent;
+
+	/* there is a left child - prev node must be the rightmost under it */
+	if (node->left) {
+		node = node->left;
+		while (node->right)
+			node = node->right;
+
+		return node;
+	}
+
+	/* otherwise check if we have a parent (and thus maybe siblings) */
+	parent = rb_parent(node);
+	if (!parent)
+		return parent;
+
+	/* go up the tree until the path connecting both is the right child
+	 * pointer and therefore the parent is the prev node
+	 */
+	while (parent && parent->left == node) {
+		node = parent;
+		parent = rb_parent(node);
+	}
+
+	return parent;
+}
