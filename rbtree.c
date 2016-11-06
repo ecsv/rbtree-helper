@@ -336,9 +336,7 @@ void rb_erase_color(struct rb_node *parent, struct rb_root *root)
 		 *
 		 * LLRB-safe "restructuring"
 		 */
-		if (!coming_from_right &&
-		    parent->right && rb_color(parent->right) == RB_BLACK &&
-		    rb_is_red(parent->right->left)) {
+		if (!coming_from_right && rb_is_red(parent->right->left)) {
 
 			/* rotate sibling's tree to right
 			 * red becomes right child of new sibling
@@ -390,8 +388,7 @@ void rb_erase_color(struct rb_node *parent, struct rb_root *root)
 		 *
 		 * LLRB-safe "restructuring"
 		 */
-		if (coming_from_right &&
-		    parent->left && rb_color(parent->left) == RB_BLACK &&
+		if (coming_from_right && rb_color(parent->left) == RB_BLACK &&
 		    rb_is_red(parent->left->left)) {
 
 			/* rotate parents tree to the right */
