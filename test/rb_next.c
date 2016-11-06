@@ -59,6 +59,7 @@ int main(void)
 			assert(item->i == j);
 		}
 		assert(j == ARRAY_SIZE(values));
+		assert(!node);
 	}
 
 	return 0;
