@@ -62,15 +62,22 @@ endif
 ifneq ($(findstring $(MAKEFLAGS),s),s)
 ifndef V
 	Q_CC = @echo '    $(COMPILER_NAME)' $@;
+	Q_LD = @echo '    $(COMPILER_NAME)' $@;
 	export Q_CC
+	export Q_LD
 endif
 endif
 
 # standard build tools
 CC ?= gcc
 RM ?= rm -f
-LINK.c = $(Q_CC)$(CC) -x c $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) $(TARGET_ARCH)
-LINK.cc = $(Q_CC)$(CXX) -x c++ $(CFLAGS) $(CXXLAGS) $(CPPFLAGS) $(LDFLAGS) $(TARGET_ARCH)
+ifeq ("$(BUILD_CXX)", "1")
+COMPILE.c = $(Q_CC)$(CXX) -x c++ $(CFLAGS) $(CXXLAGS) $(CPPFLAGS) $(TARGET_ARCH) -c
+LINK.o = $(Q_LD)$(CXX) $(CFLAGS) $(CXXLAGS) $(LDFLAGS) $(TARGET_ARCH)
+else
+COMPILE.c = $(Q_CC)$(CC) -x c $(CFLAGS) $(CPPFLAGS) $(TARGET_ARCH) -c
+LINK.o = $(Q_LD)$(CC) $(CFLAGS) $(LDFLAGS) $(TARGET_ARCH)
+endif
 
 TESTS_OK = $(TESTS:=.ok)
 
@@ -82,19 +89,19 @@ $(TESTS_OK): %.ok: %
 	@$(TESTRUN_WRAPPER) ./$<
 	@touch $@
 
-$(TESTS): ../rbtree.c
-
 # standard build rules
-.SUFFIXES: .c
-.c:
-ifeq ("$(BUILD_CXX)", "1")
-	$(LINK.cc) $< ../rbtree.c $(LDLIBS) -o $@
-else
-	$(LINK.c) $< ../rbtree.c $(LDLIBS) -o $@
-endif
+.SUFFIXES: .o .c
+.c.o:
+	$(COMPILE.c) -o $@ $<
+
+rbtree.o: ../rbtree.c
+	$(COMPILE.c) -o $@ $<
+
+$(TESTS): %: %.o rbtree.o
+	$(LINK.o) $^ $(LDLIBS) -o $@
 
 clean:
-	@$(RM) $(TESTS_ALL) $(DEP) $(TESTS_OK)
+	@$(RM) $(TESTS_ALL) $(DEP) $(TESTS_OK) $(TESTS:=.o) $(TESTS:=.d) rbtree.o rbtree.d
 
 # load dependencies
 DEP = $(TESTS:=.d)
