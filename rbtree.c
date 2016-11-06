@@ -494,8 +494,7 @@ void rb_erase_color(struct rb_node *parent, struct rb_root *root)
 		 *
 		 * LLRB-safe "recoloring"
 		 */
-		if (coming_from_right && rb_is_red(parent) &&
-		    parent->left && !rb_is_red(parent->left->left)) {
+		if (coming_from_right && rb_is_red(parent)) {
 			/* increase black-height of parent */
 			rb_set_color(parent, RB_BLACK);
 
@@ -509,10 +508,12 @@ void rb_erase_color(struct rb_node *parent, struct rb_root *root)
 		 * remove parent from 3-node, create new left leaning 3-node
 		 * with sibbling
 		 *
+		 * rb_is_red(parent->right->left) is not checked due to
+		 * !coming_from_right restructuring case
+		 *
 		 * LLRB-safe "recoloring"
 		 */
-		if (!coming_from_right && rb_is_red(parent) &&
-		    parent->right && !rb_is_red(parent->right->left)) {
+		if (!coming_from_right && rb_is_red(parent)) {
 			/* increase black-height of parent */
 			rb_set_color(parent, RB_BLACK);
 
@@ -540,7 +541,7 @@ void rb_erase_color(struct rb_node *parent, struct rb_root *root)
 		 */
 		if (coming_from_right && !rb_is_red(parent) &&
 		    !rb_is_red(parent->left) && !rb_is_red(parent->right) &&
-		    parent->left && !rb_is_red(parent->left->left)) {
+		    !rb_is_red(parent->left->left)) {
 			/* decrease black-height of sibbling  */
 			rb_set_color(parent->left, RB_RED);
 
@@ -556,7 +557,7 @@ void rb_erase_color(struct rb_node *parent, struct rb_root *root)
 		 */
 		if (!coming_from_right && !rb_is_red(parent) &&
 		    !rb_is_red(parent->left) &&
-		    parent->right && !rb_is_red(parent->right->left)) {
+		    !rb_is_red(parent->right->left)) {
 			/* decrease black-height of sibbling  */
 			rb_set_color(parent->right, RB_RED);
 
