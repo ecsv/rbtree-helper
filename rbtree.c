@@ -453,42 +453,39 @@ void rb_erase_color(struct rb_node *parent, struct rb_root *root)
 
 			/* restructure when siblings left child is red
 			 * rotation has to be done later to fix new grandparent
+			 *
+			 * rotate parents tree to the right first
 			 */
-			if (parent->left && rb_is_red(parent->left->left)) {
-				/* rotate parents tree to the right */
-				tmp = parent->left;
-				parent->left = tmp->right;
-				tmp->right = parent;
+			tmp = parent->left;
+			parent->left = tmp->right;
+			tmp->right = parent;
 
-				/* fix colors and parent entries for parent tree
-				 * parent must have become black
-				 */
-				rb_rotate_switch_parents(tmp, parent,
-							 parent->left, root,
-							 RB_BLACK);
+			/* fix colors and parent entries for parent tree
+			 * parent must have become black
+			 */
+			rb_rotate_switch_parents(tmp, parent, parent->left,
+						 root, RB_BLACK);
 
-				/**
-				 * the rotation increased the black-height of
-				 * the right tree (below tmp/previously parent)
-				 * + 1. The left tree has to compensate by
-				 * turning the red node to black (splitting
-				 * 3-node into 2x 2-nodes)
-				 */
-				rb_set_color(tmp->left, RB_BLACK);
+			/**
+			 * the rotation increased the black-height of
+			 * the right tree (below tmp/previously parent)
+			 * + 1. The left tree has to compensate by
+			 * turning the red node to black (splitting
+			 * 3-node into 2x 2-nodes)
+			 */
+			rb_set_color(tmp->left, RB_BLACK);
 
-				/* rotate gparent to fix right-leaning red */
-				tmp = gparent->right;
-				gparent->right = tmp->left;
-				tmp->left = gparent;
+			/* rotate gparent to fix right-leaning red */
+			tmp = gparent->right;
+			gparent->right = tmp->left;
+			tmp->left = gparent;
 
-				/* fix colors and parent entries
-				 * gparent must become red during rotate
-				 */
-				rb_rotate_switch_parents(tmp, gparent,
-							 gparent->right, root,
-							 RB_RED);
-				break;
-			}
+			/* fix colors and parent entries
+			 * gparent must become red during rotate
+			 */
+			rb_rotate_switch_parents(tmp, gparent, gparent->right,
+						 root, RB_RED);
+			break;
 		}
 
 		/* left sibling's children are black and parent is red
