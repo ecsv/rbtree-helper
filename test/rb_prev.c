@@ -40,6 +40,11 @@ int main(void)
 	struct rbitem *item;
 	size_t i, j;
 
+	INIT_RB_ROOT(&root);
+	items[0].i = 0;
+	rbitem_insert_unbalanced(&root, &items[0]);
+	assert(rb_prev(&items[0].rb) == NULL);
+
 	for (i = 0; i < 256; i++) {
 		random_shuffle_array(values, (uint16_t)ARRAY_SIZE(values));
 
