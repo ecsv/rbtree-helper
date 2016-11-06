@@ -494,7 +494,7 @@ void rb_erase_color(struct rb_node *parent, struct rb_root *root)
 		 *
 		 * LLRB-safe "recoloring"
 		 */
-		if (rb_is_red(parent) && coming_from_right &&
+		if (coming_from_right && rb_is_red(parent) &&
 		    parent->left && !rb_is_red(parent->left->left)) {
 			/* increase black-height of parent */
 			rb_set_color(parent, RB_BLACK);
@@ -511,7 +511,7 @@ void rb_erase_color(struct rb_node *parent, struct rb_root *root)
 		 *
 		 * LLRB-safe "recoloring"
 		 */
-		if (rb_is_red(parent) && !coming_from_right &&
+		if (!coming_from_right && rb_is_red(parent) &&
 		    parent->right && !rb_is_red(parent->right->left)) {
 			/* increase black-height of parent */
 			rb_set_color(parent, RB_BLACK);
@@ -538,7 +538,7 @@ void rb_erase_color(struct rb_node *parent, struct rb_root *root)
 		 *
 		 * LLRB-safe "recoloring"
 		 */
-		if (!rb_is_red(parent) && coming_from_right &&
+		if (coming_from_right && !rb_is_red(parent) &&
 		    !rb_is_red(parent->left) && !rb_is_red(parent->right) &&
 		    parent->left && !rb_is_red(parent->left->left)) {
 			/* decrease black-height of sibbling  */
@@ -554,7 +554,7 @@ void rb_erase_color(struct rb_node *parent, struct rb_root *root)
 		 *
 		 * LLRB-safe "recoloring"
 		 */
-		if (!rb_is_red(parent) && !coming_from_right &&
+		if (!coming_from_right && !rb_is_red(parent) &&
 		    !rb_is_red(parent->left) &&
 		    parent->right && !rb_is_red(parent->right->left)) {
 			/* decrease black-height of sibbling  */
