@@ -490,7 +490,6 @@ void rb_erase_color(struct rb_node *parent, struct rb_root *root)
 							 RB_RED);
 				break;
 			}
-			break;
 		}
 
 		/* left sibling's children are black and parent is red
