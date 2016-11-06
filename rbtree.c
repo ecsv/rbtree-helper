@@ -210,8 +210,10 @@ struct rb_node *rb_erase_node(struct rb_node *node, struct rb_root *root)
 	struct rb_node *dblack;
 	enum rb_node_color smallest_color;
 
-	/* no child */
 	if (!node->left && !node->right) {
+		/* no child
+		 * just delete the current child
+		 */
 		rb_change_child(node, NULL, rb_parent(node), root);
 
 		/* a red node can be ignored because the parent is a 3 node
@@ -223,10 +225,10 @@ struct rb_node *rb_erase_node(struct rb_node *node, struct rb_root *root)
 			return NULL;
 		else
 			return rb_parent(node);
-	}
-
-	/* one child, left */
-	if (node->left && !node->right) {
+	} else if (node->left && !node->right) {
+		/* one child, left
+		 * use left child as replacement for the deleted node
+		 */
 		rb_set_parent_color(node->left, rb_parent(node), RB_BLACK);
 		rb_change_child(node, node->left, rb_parent(node), root);
 
@@ -236,12 +238,10 @@ struct rb_node *rb_erase_node(struct rb_node *node, struct rb_root *root)
 		 * Nothing to rebalance anymore
 		 */
 		return NULL;
-	}
-
-	/* one child, right
-	 * node->right not tested due to previous two cases
-	 */
-	if (!node->left) {
+	} else if (!node->left) {
+		/* one child, right
+		 * use right child as replacement for the deleted node
+		 */
 		rb_set_parent_color(node->right, rb_parent(node), RB_BLACK);
 		rb_change_child(node, node->right, rb_parent(node), root);
 
