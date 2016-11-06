@@ -323,7 +323,7 @@ void rb_erase_color(struct rb_node *parent, struct rb_root *root)
 		coming_from_right = 1;
 
 	/* go tree upwards and fix the nodes on the way */
-	while (parent) {
+	while (1) {
 		gparent = rb_parent(parent);
 
 		/* if left child of right sibling is red
