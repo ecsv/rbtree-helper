@@ -445,7 +445,7 @@ void rb_erase_color(struct rb_node *parent, struct rb_root *root)
 			 *
 			 * recoloring fixes the right leaning red parent
 			 */
-			if (parent->left && !rb_is_red(parent->left->left)) {
+			if (!rb_is_red(parent->left->left)) {
 				rb_set_color(parent, RB_BLACK);
 				rb_set_color(parent->left, RB_RED);
 				break;
