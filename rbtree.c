@@ -328,15 +328,16 @@ void rb_erase_color(struct rb_node *parent, struct rb_root *root)
 	while (1) {
 		gparent = rb_parent(parent);
 
-		/* if left child of right sibling is red
-		 * rotate sibling and parent to convert unbalanced 2x 2-nodes +
-		 * 1x 3-node to balanced 3x 2-nodes
-		 *
-		 * red node from sibling is borrowed to eliminate double black
-		 *
-		 * LLRB-safe "restructuring"
-		 */
 		if (!coming_from_right && rb_is_red(parent->right->left)) {
+			/* if left child of right sibling is red
+			 * rotate sibling and parent to convert unbalanced
+			 * 2x 2-nodes + 1x 3-node to balanced 3x 2-nodes
+			 *
+			 * red node from sibling is borrowed to eliminate double
+			 * black
+			 *
+			 * LLRB-safe "restructuring"
+			 */
 
 			/* rotate sibling's tree to right
 			 * red becomes right child of new sibling
@@ -380,16 +381,17 @@ void rb_erase_color(struct rb_node *parent, struct rb_root *root)
 			break;
 		}
 
-		/* if left child of left sibling is red
-		 * rotate sibling and parent to convert unbalanced 1x 2-nodes +
-		 * 1x 3-node to balanced 2x 2-nodes
-		 *
-		 * red node from sibling is borrowed to eliminate double black
-		 *
-		 * LLRB-safe "restructuring"
-		 */
 		if (coming_from_right && rb_color(parent->left) == RB_BLACK &&
 		    rb_is_red(parent->left->left)) {
+			/* if left child of left sibling is red
+			 * rotate sibling and parent to convert unbalanced
+			 * 1x 2-nodes + 1x 3-node to balanced 2x 2-nodes
+			 *
+			 * red node from sibling is borrowed to eliminate double
+			 * black
+			 *
+			 * LLRB-safe "restructuring"
+			 */
 
 			/* rotate parents tree to the right */
 			tmp = parent->left;
@@ -413,12 +415,14 @@ void rb_erase_color(struct rb_node *parent, struct rb_root *root)
 			break;
                }
 
-               /* left sibling is red
-		* rotate 3-node towards right and split it into 2x 2-nodes
-		*
-		* LLRB-safe "adjustment"
-		*/
                if (coming_from_right && rb_is_red(parent->left)) {
+			/* left sibling is red
+			 * rotate 3-node towards right and split it into
+			 * 2x 2-nodes
+			 *
+			 * LLRB-safe "adjustment"
+			 */
+
 			/* rotate right */
 			tmp = parent->left;
 			parent->left = tmp->right;
@@ -488,13 +492,14 @@ void rb_erase_color(struct rb_node *parent, struct rb_root *root)
 			break;
 		}
 
-		/* left sibling's children are black and parent is red
-		 * remove parent from 3-node, create new left leaning 3-node
-		 * with sibbling
-		 *
-		 * LLRB-safe "recoloring"
-		 */
 		if (coming_from_right && rb_is_red(parent)) {
+			/* left sibling's children are black and parent is red
+			 * remove parent from 3-node, create new left leaning
+			 * 3-node with sibbling
+			 *
+			 * LLRB-safe "recoloring"
+			 */
+
 			/* increase black-height of parent */
 			rb_set_color(parent, RB_BLACK);
 
@@ -504,16 +509,17 @@ void rb_erase_color(struct rb_node *parent, struct rb_root *root)
 			break;
 		}
 
-		/* right sibling's children are black and parent is red
-		 * remove parent from 3-node, create new left leaning 3-node
-		 * with sibbling
-		 *
-		 * rb_is_red(parent->right->left) is not checked due to
-		 * !coming_from_right restructuring case
-		 *
-		 * LLRB-safe "recoloring"
-		 */
 		if (!coming_from_right && rb_is_red(parent)) {
+			/* right sibling's children are black and parent is red
+			 * remove parent from 3-node, create new left leaning
+			 * 3-node with sibbling
+			 *
+			 * rb_is_red(parent->right->left) is not checked due to
+			 * !coming_from_right restructuring case
+			 *
+			 * LLRB-safe "recoloring"
+			 */
+
 			/* increase black-height of parent */
 			rb_set_color(parent, RB_BLACK);
 
@@ -534,14 +540,15 @@ void rb_erase_color(struct rb_node *parent, struct rb_root *root)
 			break;
 		}
 
-		/* left sibling is black and parent is black
-		 * (new) parent becomes double black -> continue upwards
-		 *
-		 * LLRB-safe "recoloring"
-		 */
 		if (coming_from_right && !rb_is_red(parent) &&
 		    !rb_is_red(parent->left) && !rb_is_red(parent->right) &&
 		    !rb_is_red(parent->left->left)) {
+			/* left sibling is black and parent is black
+			 * (new) parent becomes double black -> continue upwards
+			 *
+			 * LLRB-safe "recoloring"
+			 */
+
 			/* decrease black-height of sibbling  */
 			rb_set_color(parent->left, RB_RED);
 
@@ -550,14 +557,16 @@ void rb_erase_color(struct rb_node *parent, struct rb_root *root)
 			 */
 		}
 
-		/* right sibling is black and parent is black
-		 * (new) parent becomes double black -> continue upwards
-		 *
-		 * LLRB-safe "recoloring"
-		 */
+
 		if (!coming_from_right && !rb_is_red(parent) &&
 		    !rb_is_red(parent->left) &&
 		    !rb_is_red(parent->right->left)) {
+			/* right sibling is black and parent is black
+			 * (new) parent becomes double black -> continue upwards
+			 *
+			 * LLRB-safe "recoloring"
+			 */
+
 			/* decrease black-height of sibbling  */
 			rb_set_color(parent->right, RB_RED);
 
