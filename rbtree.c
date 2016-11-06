@@ -238,8 +238,10 @@ struct rb_node *rb_erase_node(struct rb_node *node, struct rb_root *root)
 		return NULL;
 	}
 
-	/* one child, right */
-	if (!node->left && node->right) {
+	/* one child, right
+	 * node->right not tested due to previous two cases
+	 */
+	if (!node->left) {
 		rb_set_parent_color(node->right, rb_parent(node), RB_BLACK);
 		rb_change_child(node, node->right, rb_parent(node), root);
 
