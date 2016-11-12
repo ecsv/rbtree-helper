@@ -140,7 +140,7 @@ static __inline__ void check_depth(const struct rb_root *root)
 	assert(depths.black_min == depths.black_max);
 }
 
-static __inline__ void check_llrb_node(const struct rb_node *node)
+static __inline__ void check_rb_node(const struct rb_node *node)
 {
 	if (!node)
 		return;
@@ -151,19 +151,16 @@ static __inline__ void check_llrb_node(const struct rb_node *node)
 		assert(!node->right || rb_color(node->right) == RB_BLACK);
 	}
 
-	/* left leaning red black */
-	assert(!node->right || rb_color(node->right) == RB_BLACK);
-
-	check_llrb_node(node->left);
-	check_llrb_node(node->right);
+	check_rb_node(node->left);
+	check_rb_node(node->right);
 }
 
-static __inline__ void check_llrb_nodes(const struct rb_root *root)
+static __inline__ void check_rb_nodes(const struct rb_root *root)
 {
 	if (root->node)
 		assert(rb_color(root->node) == RB_BLACK);
 
-	check_llrb_node(root->node);
+	check_rb_node(root->node);
 }
 
 #endif /* __RBTREE_COMMON_TREEVALIDATION_H__ */

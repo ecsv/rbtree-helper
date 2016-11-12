@@ -70,7 +70,7 @@ int main(void)
 			check_root_order(&root, skiplist,
 					(uint16_t)ARRAY_SIZE(skiplist));
 			check_depth(&root);
-			check_llrb_nodes(&root);
+			check_rb_nodes(&root);
 		}
 		assert(rb_empty(&root));
 	}

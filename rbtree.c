@@ -23,6 +23,7 @@
 
 #include "rbtree.h"
 
+#include <stdbool.h>
 #include <stddef.h>
 
 /**
@@ -112,360 +113,185 @@ static void rb_rotate_switch_parents(struct rb_node *node_top,
 }
 
 /**
+ * rb_insert_recolor() - Rebalance right subtree via recolor
+ * @gparent: black grandparent of unbalanced subtree
+ * @root: pointer to rb root
+ *
+ * The grandparent has two red children and one red grandchildren. This
+ * is a violation of the red black tree requirements (two consecutive red
+ * nodes). This can be moved from the grandchildren up to the grandparent by
+ * recoloring the children of the grandparent from red to black.
+ *
+ * But this also means that the grandparent must now be (temporarily) recolored
+ * red and the problem of the potentially two consecutive red nodes are moved
+ * up the tree. The rebalancing code must therefore continue the process at
+ * the grandparent.
+ */
+static void rb_insert_recolor(struct rb_node *gparent)
+{
+	/* switch red parent of our red node and the red uncle to black */
+	rb_set_color(gparent->left, RB_BLACK);
+	rb_set_color(gparent->right, RB_BLACK);
+
+	/* move the red color of uncle/parent up to previously black grand
+	 * parent
+	 */
+	rb_set_color(gparent, RB_RED);
+}
+
+/**
+ * rb_insert_rotate_left() - Rotate at @node to the left
+ * @node: pointer to the new node
+ * @root: pointer to rb root
+ *
+ * The right child of @node is moved up the tree and the @node becomes the
+ * left child of this tree. The left node is assumed to be black (or non
+ * existing). The right child is red and the new left child will then also be
+ * red.
+ */
+static void rb_insert_rotate_left(struct rb_node *node, struct rb_root *root)
+{
+	struct rb_node *tmp;
+
+	tmp = node->right;
+	node->right = tmp->left;
+	tmp->left = node;
+
+	/* fix colors and parent entries
+	 * node must stay red during rotate
+	 */
+	rb_rotate_switch_parents(tmp, node, node->right, root, RB_RED);
+}
+
+/**
+ * rb_insert_rotate_right() - Rotate at @node to the right
+ * @node: pointer to the new node
+ * @root: pointer to rb root
+ *
+ * The left child of @node is moved up the tree and the @node becomes the
+ * right child of this tree. The right node is assumed to be black (or non
+ * existing). The left child is red and the new right child will then also be
+ * red.
+ */
+static void rb_insert_rotate_right(struct rb_node *node, struct rb_root *root)
+{
+	struct rb_node *tmp;
+
+	tmp = node->left;
+	node->left = tmp->right;
+	tmp->right = node;
+
+	/* fix colors and parent entries
+	 * node must stay red during rotate
+	 */
+	rb_rotate_switch_parents(tmp, node, node->left, root, RB_RED);
+}
+
+/**
  * rb_insert_color() - Go tree upwards and rebalance it after insert
  * @node: pointer to the new node
  * @root: pointer to rb root
  *
- * The tree is traversed from bottom to the top starting at @node. right leaning
- * 3-nodes are rotated left, unbalanced 4-nodes are rotated to the left and
- * balanced 4-nodes are splitted again into to 2-nodes (color flip).
+ * The tree is traversed from bottom to the top starting at the parent of
+ * @node. The rebalancing is done via recoloring and rotating
  *
- * When the tree was a LLRB before the link of the new node then the resulting
- * tree will again be a LLRB tree
+ * When the tree was an RB tree before the link of the new node then the
+ * resulting tree will again be an RB tree
  */
 void rb_insert_color(struct rb_node *node, struct rb_root *root)
 {
+	struct rb_node *gparent;
 	struct rb_node *parent;
-	struct rb_node *tmp;
+	struct rb_node *uncle;
+	bool uncle_is_right;
 
-	/* go tree upwards and fix the nodes on the way */
-	while (node) {
+	while (1) {
 		parent = rb_parent(node);
 
-		if (!rb_is_red(node->left)) {
-			/* rotate 3-node to left when right child is red */
-			if (rb_is_red(node->right)) {
-				tmp = node->right;
-				node->right = tmp->left;
-				tmp->left = node;
-
-				/* fix colors and parent entries
-				 * node must become red during rotate
-				 */
-				rb_rotate_switch_parents(tmp, node, node->right,
-							 root, RB_RED);
-
-				node = tmp;
-			}
-		} else {
-			/* rotate right when two consecutive left nodes are red
-			 */
-			if (rb_is_red(node->left->left)) {
-				tmp = node->left;
-				node->left = tmp->right;
-				tmp->right = node;
-
-				/* fix colors and parent entries
-				 * node must become red during rotate
-				 */
-				rb_rotate_switch_parents(tmp, node, node->left,
-							 root, RB_RED);
-
-				node = tmp;
-			}
-
-			/* flip color/split 4-node into 2-nodes */
-			if (rb_is_red(node->right)) {
-				rb_set_color(node, RB_RED);
-				rb_set_color(node->left, RB_BLACK);
-				rb_set_color(node->right, RB_BLACK);
-			}
+		/* reached root, mark it black */
+		if (!parent) {
+			rb_set_parent_color(node, NULL, RB_BLACK);
+			break;
 		}
 
 		/* stop when no more fixes required on red path */
-		if (rb_color(node) == RB_BLACK)
+		if (rb_color(parent) == RB_BLACK)
 			break;
 
-		/* reached red root, mark it black */
-		if (!parent)
-			rb_set_parent_color(node, NULL, RB_BLACK);
+		/* if parent is not black then node must have a black
+		 * grandparent and might even have an uncle (for recoloring or
+		 * rotating)
+		 */
+		gparent = rb_parent(parent);
+		if (parent != gparent->right) {
+			uncle_is_right = true;
+			uncle = gparent->right;
+		} else {
+			uncle_is_right = false;
+			uncle = gparent->left;
+		}
 
-		node = parent;
+		if (rb_is_red(uncle)) {
+			/* switch colors of parent and uncle to black to avoid
+			 * problem of two consecutive red nodes (node + parent)
+			 */
+			rb_insert_recolor(gparent);
+
+			/* problem of new red node was just moved to grandparent
+			 * and check has to continue there
+			 */
+			node = gparent;
+		} else {
+			/* the uncle either doesn't exist or is black. The two
+			 * red nodes (node + parent) can be rotated together
+			 * with the grandparent to form an standard 4-node
+			 * (one red left child one red right child under a black
+			 * node)
+			 */
+			if (uncle_is_right) {
+				/* the red parent is left from the grandparent
+				 * and the sibling is either black or doens't
+				 * exist. The red colored child of parent must
+				 * also be left or otherwise the rotation on
+				 * the grandparent will create two consecutive
+				 * red nodes on the right side of the subtree
+				 */
+				if (parent->right == node)
+					rb_insert_rotate_left(parent, root);
+
+				/* the black grandparent has no or black child
+				 * on the right side. And the left child and
+				 * the left most grandchild of it are red.
+				 * A rotation to the right will then create
+				 * a balanced 4-node (black node with two red
+				 * children)
+				 */
+				rb_insert_rotate_right(gparent, root);
+			} else {
+				/* the red parent is right from the grandparent
+				 * and the sibling is either black or doens't
+				 * exist. The red colored child of parent must
+				 * also be right or otherwise the rotation on
+				 * the grandparent will create two consecutive
+				 * red nodes on the left side of the subtree
+				 */
+				if (parent->left == node)
+					rb_insert_rotate_right(parent, root);
+
+				/* the black grandparent has no or black child
+				 * on the left side. And the right child and
+				 * the right most grandchild of it are red.
+				 * A rotation to the left will then create
+				 * a balanced 4-node (black node with two red
+				 * children)
+				 */
+				rb_insert_rotate_left(gparent, root);
+			}
+
+			/* tree is now rebalanced again */
+			break;
+		}
 	}
-}
-
-/**
- * rb_erase_left_restructure() - Rebalance left subtree via restructure
- * @parent: parent of unbalanced subtree under left node
- * @root: pointer to rb root
- *
- * if left child of right sibling is red, rotate sibling and parent to convert
- * unbalanced 2x 2-nodes + 1x 3-node to balanced 3x 2-nodes
- *
- * red node from sibling is borrowed to eliminate double black
- */
-static void rb_erase_left_restructure(struct rb_node *parent,
-				      struct rb_root *root)
-{
-	struct rb_node *sibling;
-	struct rb_node *tmp;
-
-	/* rotate sibling's tree to right
-	 * red becomes right child of new sibling
-	 */
-	sibling = parent->right;
-	tmp = sibling->left;
-	sibling->left = tmp->right;
-	tmp->right = sibling;
-
-	/* fix colors and parent entries for sibling tree
-	 * sibling must become red
-	 */
-	rb_rotate_switch_parents(tmp, sibling, sibling->left, root, RB_RED);
-
-	/* rotate parents tree to the left
-	 * parent becomes red and sibling, red can be borrowed
-	 * (changed to black) for double black of node
-	 */
-	tmp = parent->right;
-	parent->right = tmp->left;
-	tmp->left = parent;
-
-	/* fix colors and parent entries for parent tree
-	 * parent must have become black
-	 */
-	rb_rotate_switch_parents(tmp, parent, parent->right, root, RB_BLACK);
-
-	/**
-	 * the rotation in the parent tree (both child black)
-	 * towards the node increased the black-height
-	 * (below tmp/previously parent) of the right tree+1 and
-	 * of the left tree-1. The double black node can
-	 * therefore be dropped. The red right child below tmp
-	 * has to be changed to have the right tree again at the
-	 * same height
-	 */
-	rb_set_color(tmp->right, RB_BLACK);
-}
-
-/**
- * rb_erase_left_recolor_red() - Rebalance left subtree via recolor
- * @parent: red parent of unbalanced subtree under left node
- * @root: pointer to rb root
- *
- * right sibling's children are black and parent is red
- * remove parent from 3-node, create new left leaning 3-node with sibling
- */
-static void rb_erase_left_recolor_red(struct rb_node *parent,
-				      struct rb_root *root)
-{
-	struct rb_node *tmp;
-
-	/* increase black-height of parent */
-	rb_set_color(parent, RB_BLACK);
-
-	/* decrease black-height of sibling  */
-	rb_set_color(parent->right, RB_RED);
-
-	/* rotate left to make LLRB */
-	tmp = parent->right;
-	parent->right = tmp->left;
-	tmp->left = parent;
-
-	/* fix colors and parent entries
-	 * node must become red during rotate
-	 */
-	rb_rotate_switch_parents(tmp, parent, parent->right, root, RB_RED);
-}
-
-/**
- * rb_erase_left_recolor_black() - Rebalance left subtree via recolor
- * @parent: black parent of unbalanced subtree under left node
- * @root: pointer to rb root
- *
- * right sibling is black and parent is black
- * (new) parent becomes double black -> continue upwards
- *
- * Return: new double black @parent node otherwise
- */
-static struct rb_node *rb_erase_left_recolor_black(struct rb_node *parent,
-						   struct rb_root *root)
-{
-	struct rb_node *tmp;
-
-	/* decrease black-height of sibling  */
-	rb_set_color(parent->right, RB_RED);
-
-	/* rotate left to make LLRB again */
-	tmp = parent->right;
-	parent->right = tmp->left;
-	tmp->left = parent;
-
-	/* fix colors and parent entries
-	 * node must become red during rotate
-	 */
-	rb_rotate_switch_parents(tmp, parent, parent->right, root, RB_RED);
-
-	/* continue at grand-parent to fix parents
-	 * 'double-black'ness
-	 */
-	return tmp;
-}
-
-/**
- * rb_erase_right_adjust_black() - Rebalance right subtree via adjustment
- * @parent: parent of unbalanced subtree under right node
- * @root: pointer to rb root
- *
- * left sibling is red. No red child under right child of sibling
- * rotate 3-node towards right and split it into 2x 2-nodes. Apply recoloring
- */
-static void rb_erase_right_adjust_black(struct rb_node *parent,
-					struct rb_root *root)
-{
-	struct rb_node *tmp;
-
-	/* rotate right */
-	tmp = parent->left;
-	parent->left = tmp->right;
-	tmp->right = parent;
-
-	/* fix colors and parent entries
-	 *
-	 * the rotation of the three node kept the black-height
-	 * balance the same. Parent becomes red.
-	 *
-	 * this caused a right-leaning red node
-	 */
-	rb_rotate_switch_parents(tmp, parent, parent->left, root, RB_RED);
-
-	/* recolor when sibling's children are black
-	 * already known that parent (right leaning is red
-	 * and right sibling is black
-	 *
-	 * recoloring fixes the right leaning red parent and fixes its black
-	 * height
-	 */
-	rb_set_color(parent, RB_BLACK);
-	rb_set_color(parent->left, RB_RED);
-}
-
-/**
- * rb_erase_right_adjust_red() - Rebalance right subtree via adjustment
- * @parent: parent of unbalanced subtree under right node
- * @root: pointer to rb root
- *
- * left sibling is red. red child under right child of sibling
- * restructure as necessary
- */
-static void rb_erase_right_adjust_red(struct rb_node *parent,
-				      struct rb_root *root)
-{
-	struct rb_node *sibling;
-	struct rb_node *tmp;
-
-	/* rotate sibling's tree to left */
-	sibling = parent->left;
-	tmp = sibling->right;
-	sibling->right = tmp->left;
-	tmp->left = sibling;
-
-	/* fix colors and parent entries for sibling tree
-	 * sibling should become black
-	 * but lets do the recolor to red in this step
-	 */
-	rb_rotate_switch_parents(tmp, sibling, sibling->right, root, RB_RED);
-
-	/* recolor right child of sibling to black to fix its black height */
-	rb_set_color(sibling->right, RB_BLACK);
-
-	/* rotate parent's tree to right */
-	tmp = parent->left;
-	parent->left = tmp->right;
-	tmp->right = parent;
-
-	/* fix colors and parent entries for parent tree
-	 * parent should become red
-	 * but lets do the recolor to black in this step
-	 */
-	rb_rotate_switch_parents(tmp, parent, parent->left, root, RB_BLACK);
-}
-
-/**
- * rb_erase_right_adjust() - Rebalance right subtree via adjustment
- * @parent: parent of unbalanced subtree under right node
- * @root: pointer to rb root
- *
- * left sibling is red. restructure as necessary
- */
-static void rb_erase_right_adjust(struct rb_node *parent, struct rb_root *root)
-{
-	if (rb_is_red(parent->left->right->left))
-		rb_erase_right_adjust_red(parent, root);
-	else
-		rb_erase_right_adjust_black(parent, root);
-}
-
-/**
- * rb_erase_right_restructure() - Rebalance right subtree via restructure
- * @parent: parent of unbalanced subtree under right node
- * @root: pointer to rb root
- */
-static void rb_erase_right_restructure(struct rb_node *parent,
-				       struct rb_root *root)
-{
-	struct rb_node *tmp;
-
-	/* if left child of left sibling is red
-	 * rotate sibling and parent to convert unbalanced
-	 * 1x 2-nodes + 1x 3-node to balanced 2x 2-nodes
-	 *
-	 * red node from sibling is borrowed to eliminate double
-	 * black
-	 *
-	 * LLRB-safe "restructuring"
-	 */
-
-	/* rotate parents tree to the right */
-	tmp = parent->left;
-	parent->left = tmp->right;
-	tmp->right = parent;
-
-	/* fix colors and parent entries for parent tree
-	 * parent must have become black
-	 */
-	rb_rotate_switch_parents(tmp, parent, parent->left, root, RB_BLACK);
-
-	/**
-	 * the rotation increased the black-height of the right
-	 * tree (below tmp/previously parent) + 1. The left
-	 * tree has to compensate by turning the red node to
-	 * black (splitting 3-node into 2x 2-nodes)
-	 */
-	rb_set_color(tmp->left, RB_BLACK);
-}
-
-/**
- * rb_erase_right_recolor_red() - Rebalance right subtree via recolor
- * @parent: red parent of unbalanced subtree under right node
- * @root: pointer to rb root
- *
- * left sibling's children are black and parent is red
- * remove parent from 3-node, create new left leaning 3-node with sibling
- */
-static void rb_erase_right_recolor_red(struct rb_node *parent)
-{
-	/* increase black-height of parent */
-	rb_set_color(parent, RB_BLACK);
-
-	/* decrease black-height of sibling  */
-	rb_set_color(parent->left, RB_RED);
-}
-
-/**
- * rb_erase_right_recolor_black() - Rebalance right subtree via recolor
- * @parent: black parent of unbalanced subtree under right node
- * @root: pointer to rb root
- *
- * left sibling is black and parent is black
- * (new) parent becomes double black -> continue upwards
- */
-static void rb_erase_right_recolor_black(struct rb_node *parent)
-{
-	/* decrease black-height of sibling  */
-	rb_set_color(parent->left, RB_RED);
-
-	/* continue at grand-parent to fix parents 'double-black'ness */
 }
 
 /**
@@ -491,6 +317,7 @@ struct rb_node *rb_erase_node(struct rb_node *node, struct rb_root *root)
 	struct rb_node *smallest;
 	struct rb_node *smallest_parent;
 	struct rb_node *dblack;
+	struct rb_node *smallest_right;
 	enum rb_node_color smallest_color;
 
 	if (!node->left && !node->right) {
@@ -530,9 +357,7 @@ struct rb_node *rb_erase_node(struct rb_node *node, struct rb_root *root)
 
 		/* the right child must be red when there is no left child
 		 * (3-node). Otherwise the subtrees would have different
-		 * heights. But this is a LLRB and thus a right red child
-		 * never happens after a rebalance. Still leaving this when
-		 * function is (mis)used for non-LLRB
+		 * heights.
 		 */
 		return NULL;
 	}
@@ -549,14 +374,11 @@ struct rb_node *rb_erase_node(struct rb_node *node, struct rb_root *root)
 	else
 		dblack = smallest_parent;
 
-	/* move right child of smallest one up
-	 * But this is a LLRB and thus a right child with no left child never
-	 * happens after a rebalance. Still leaving this when function is
-	 * (mis)used for non-LLRB
-	 */
-	if (smallest->right)
-		rb_set_parent(smallest->right, smallest_parent);
-	rb_change_child(smallest, smallest->right, smallest_parent, root);
+	/* move right child of smallest one up */
+	smallest_right = smallest->right;
+	if (smallest_right)
+		rb_set_parent_color(smallest_right, smallest_parent, RB_BLACK);
+	rb_change_child(smallest, smallest_right, smallest_parent, root);
 
 	/* exchange node with smallest */
 	rb_set_parent_color(smallest, rb_parent(node), rb_color(node));
@@ -570,15 +392,107 @@ struct rb_node *rb_erase_node(struct rb_node *node, struct rb_root *root)
 
 	rb_change_child(node, smallest, rb_parent(node), root);
 
-	/* a red node can be ignored because the parent is a 3 node
-	 * which gets then converted to 2 node after smallest node is moved up.
-	 * If it is black then the parent node might get double black and thus
-	 * has to be rebalanced
+	/* a red node can be ignored because the parent is a 3/4 node
+	 * which gets then converted to 2/4 node after smallest node is moved
+	 * up. If it is black then the parent node might get double black and
+	 * thus has to be rebalanced
 	 */
-	if (smallest_color == RB_RED)
+	if (smallest_color == RB_RED || smallest_right)
 		return NULL;
 	else
 		return dblack;
+}
+
+/**
+ * rb_erase_parent_swap_red_sibling_right() - Rotate at @parent to the left
+ *  when right sibling is red
+ * @parent: pointer to the new node
+ * @root: pointer to rb root
+ *
+ * red sibling's tree has one layer of black nodes more than current tree.
+ * parent must therefore be black.
+ *
+ * rotate the subtree under parent to the left (towards us). Sibling will become
+ * the new "parent" of the subtree and the old parent is now the red node. The
+ * imbalance between parent->left (-1) and parent->right didn't change and has
+ * to be processed further.
+ */
+static void rb_erase_parent_swap_red_sibling_right(struct rb_node *parent,
+						   struct rb_root *root)
+{
+	struct rb_node *tmp;
+
+	if (!rb_is_red(parent->right))
+		return;
+
+	tmp = parent->right;
+	parent->right = tmp->left;
+	tmp->left = parent;
+
+	rb_rotate_switch_parents(tmp, parent, parent->right, root, RB_RED);
+}
+
+/**
+ * rb_erase_parent_swap_red_sibling_left() - Rotate at @parent to the right
+ *  when left sibling is red
+ * @parent: pointer to the new node
+ * @root: pointer to rb root
+ *
+ * red sibling's tree has one layer of black nodes more than current tree.
+ * parent must therefore be black.
+ *
+ * rotate the subtree under parent to the right (towards us). Sibling will
+ * become the new "parent" of the subtree and the old parent is now the red
+ * node. The imbalance between parent->right (-1) and parent->left didn't change
+ * and has to be processed further.
+ */
+static void rb_erase_parent_swap_red_sibling_left(struct rb_node *parent,
+						  struct rb_root *root)
+{
+	struct rb_node *tmp;
+
+	if (!rb_is_red(parent->left))
+		return;
+
+	tmp = parent->left;
+	parent->left = tmp->right;
+	tmp->right = parent;
+
+	rb_rotate_switch_parents(tmp, parent, parent->left, root, RB_RED);
+}
+
+/**
+ * rb_erase_recolor() - Rebalance subtree via recolor
+ * @parent: parent of subtree with imbalance
+ * @sibling: pointer to rb root
+ * @coming_from_right: pointer variable which stores which child of returned
+ *  @parent caused imbalance
+ *
+ * Return: new double black @parent node, NULL otherwise
+ */
+static struct rb_node *rb_erase_recolor(struct rb_node *parent,
+					struct rb_node *sibling,
+					bool *coming_from_right)
+{
+	struct rb_node *gparent;
+
+	rb_set_parent_color(sibling, parent, RB_RED);
+	if (rb_is_red(parent)) {
+		rb_set_color(parent, RB_BLACK);
+		return NULL;
+	} else {
+		gparent = rb_parent(parent);
+		if (gparent) {
+			if (gparent->left == parent)
+				*coming_from_right = false;
+			else
+				*coming_from_right = true;
+
+			return gparent;
+		} else {
+			return NULL;
+		}
+	}
 }
 
 /**
@@ -587,75 +501,124 @@ struct rb_node *rb_erase_node(struct rb_node *node, struct rb_root *root)
  * @root: pointer to rb root
  *
  * The tree is traversed from bottom to the top starting at @parent. The
- * rebalancing is done via restructuring, recoloring and adjustment (requires
- * right-leaning restructuring/recoloring)
+ * rebalancing is done via restructuring, recoloring and adjustment.
  *
- * When the tree was a LLRB before the erase of the node then the resulting
- * tree will again be a LLRB tree
+ * When the tree was an RB tree before the erase of the node then the resulting
+ * tree will again be an RB tree
  */
 void rb_erase_color(struct rb_node *parent, struct rb_root *root)
 {
-	struct rb_node *gparent;
-	int coming_from_right = 0;
+	bool coming_from_right = false;
+	struct rb_node *sibling;
+	struct rb_node *tmp;
 
 	/* the right child was removed when it is missing
 	 * otherwise the left child was the smallest during erase and thus
 	 * it was removed
 	 */
 	if (!parent->right)
-		coming_from_right = 1;
+		coming_from_right = true;
 
 	/* go tree upwards and fix the nodes on the way */
 	while (1) {
-		gparent = rb_parent(parent);
 
 		if (!coming_from_right) {
-			if (rb_is_red(parent->right->left)) {
-				rb_erase_left_restructure(parent, root);
-				break;
-			} else if (rb_is_red(parent)) {
-				rb_erase_left_recolor_red(parent, root);
-				break;
-			} else {
-				parent = rb_erase_left_recolor_black(parent,
-								     root);
-				/* continue at grand-parent to fix parents
-				 * 'double-black'ness
-				 */
-				gparent = rb_parent(parent);
+			rb_erase_parent_swap_red_sibling_right(parent, root);
+
+			sibling = parent->right;
+			if (!sibling->right || !rb_is_red(sibling->right)) {
+				if (!sibling->left ||
+				    !rb_is_red(sibling->left)) {
+					parent = rb_erase_recolor(parent,
+								  sibling,
+								  &coming_from_right);
+					if (parent)
+						continue;
+					else
+						break;
+				} else {
+					/* rotate sibling to the right. This
+					 * moves the left red child to the
+					 * right without changing the black
+					 * height of any subtree
+					 */
+					tmp = sibling->left;
+					sibling->left = tmp->right;
+					tmp->right = sibling;
+
+					rb_rotate_switch_parents(tmp, sibling,
+								 sibling->left,
+								 root, RB_RED);
+				}
 			}
+
+			/* left rotate parent and recolor new sibling of
+			 * parent
+			 */
+			tmp = parent->right;
+			parent->right = tmp->left;
+			tmp->left = parent;
+
+			/* fix colors and parent entries
+			 * node must stay black during rotate.
+			 *
+			 * The right (red) child of the sibling must become
+			 * black to adjust the black height
+			 */
+			rb_rotate_switch_parents(tmp, parent, parent->right,
+						 root, RB_BLACK);
+			rb_set_color(tmp->right, RB_BLACK);
+
+			break;
 		} else {
-			if (rb_is_red(parent->left)) {
-				rb_erase_right_adjust(parent, root);
-				break;
-			} else if (rb_is_red(parent->left->left)) {
-				rb_erase_right_restructure(parent, root);
-				break;
-			} else if (rb_is_red(parent)) {
-				rb_erase_right_recolor_red(parent);
-				break;
-			} else {
-				rb_erase_right_recolor_black(parent);
+			rb_erase_parent_swap_red_sibling_left(parent, root);
 
-				/* continue at gparent (which was not changed by
-				 * rb_erase_right_recolor) to fix parents
-				 * 'double-black'ness
-				 */
+			sibling = parent->left;
+			if (!sibling->left || !rb_is_red(sibling->left)) {
+				if (!sibling->right ||
+				    !rb_is_red(sibling->right)) {
+					parent = rb_erase_recolor(parent,
+								  sibling,
+								  &coming_from_right);
+					if (parent)
+						continue;
+					else
+						break;
+				} else {
+					/* rotate sibling to the left. This
+					 * moves the right red child to the
+					 * left without changing the black
+					 * height of any subtree
+					 */
+					tmp = sibling->right;
+					sibling->right = tmp->left;
+					tmp->left = sibling;
+
+					rb_rotate_switch_parents(tmp, sibling,
+								 sibling->right,
+								 root, RB_RED);
+				}
 			}
-		}
 
-		/* reached root, mark it black */
-		if (!gparent) {
-			rb_set_parent_color(parent, NULL, RB_BLACK);
+			/* right rotate parent and recolor new sibling of
+			 * parent
+			 */
+			tmp = parent->left;
+			parent->left = tmp->right;
+			tmp->right = parent;
+
+			/* fix colors and parent entries
+			 * node must stay black during rotate.
+			 *
+			 * The left (red) child of the sibling must become black
+			 * to adjust the black height
+			 */
+			rb_rotate_switch_parents(tmp, parent, parent->left,
+						 root, RB_BLACK);
+			rb_set_color(tmp->left, RB_BLACK);
+
 			break;
 		}
-
-		if (gparent->left == parent)
-			coming_from_right = 0;
-		else
-			coming_from_right = 1;
-
-		parent = gparent;
 	}
 }
 
