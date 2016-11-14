@@ -132,45 +132,44 @@ void rb_insert_color(struct rb_node *node, struct rb_root *root)
 	while (node) {
 		parent = rb_parent(node);
 
-		/* rotate 3-node to left when right child is red */
-		if (rb_is_red(node->right)) {
-			/* rotate */
-			tmp = node->right;
-			node->right = tmp->left;
-			tmp->left = node;
+		if (!rb_is_red(node->left)) {
+			/* rotate 3-node to left when right child is red */
+			if (rb_is_red(node->right)) {
+				tmp = node->right;
+				node->right = tmp->left;
+				tmp->left = node;
 
-			/* fix colors and parent entries
-			 * node must become red during rotate
+				/* fix colors and parent entries
+				 * node must become red during rotate
+				 */
+				rb_rotate_switch_parents(tmp, node, node->right,
+							 root, RB_RED);
+
+				node = tmp;
+			}
+		} else {
+			/* rotate right when two consecutive left nodes are red
 			 */
-			rb_rotate_switch_parents(tmp, node, node->right, root,
-						 RB_RED);
+			if (rb_is_red(node->left->left)) {
+				tmp = node->left;
+				node->left = tmp->right;
+				tmp->right = node;
 
-			node = tmp;
-		}
+				/* fix colors and parent entries
+				 * node must become red during rotate
+				 */
+				rb_rotate_switch_parents(tmp, node, node->left,
+							 root, RB_RED);
 
-		/* rotate right when two consecutive left nodes are red */
-		if (rb_is_red(node->left) &&
-		    rb_is_red(node->left->left)) {
-			/* rotate */
-			tmp = node->left;
-			node->left = tmp->right;
-			tmp->right = node;
+				node = tmp;
+			}
 
-			/* fix colors and parent entries
-			 * node must become red during rotate
-			 */
-			rb_rotate_switch_parents(tmp, node, node->left, root,
-						 RB_RED);
-
-			node = tmp;
-		}
-
-		/* flip color/split 4-node into 2-nodes */
-		if (rb_is_red(node->left) &&
-		    rb_is_red(node->right)) {
-			rb_set_color(node, RB_RED);
-			rb_set_color(node->left, RB_BLACK);
-			rb_set_color(node->right, RB_BLACK);
+			/* flip color/split 4-node into 2-nodes */
+			if (rb_is_red(node->right)) {
+				rb_set_color(node, RB_RED);
+				rb_set_color(node->left, RB_BLACK);
+				rb_set_color(node->right, RB_BLACK);
+			}
 		}
 
 		/* stop when no more fixes required on red path */
