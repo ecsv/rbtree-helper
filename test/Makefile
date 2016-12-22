@@ -29,15 +29,11 @@ TESTS_CXX_COMPATIBLE = \
  rb_init-explicit \
  rb_init-local \
  rb_init-global \
- rb_link_node \
- rb_erase_node \
+ rb_insert \
  rb_first \
  rb_last \
  rb_next \
  rb_prev \
- rb_link_node-prioqueue \
- rb_erase_node-prioqueue \
- rb_insert_color \
  rb_erase \
  rb_insert-prioqueue \
  rb_erase-prioqueue \

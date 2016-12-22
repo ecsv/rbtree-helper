@@ -52,7 +52,7 @@ int main(void)
 			assert(item);
 
 			item->i = values[j];
-			rbitem_insert_balanced(&root, item);
+			rbitem_insert(&root, item);
 			skiplist[values[j]] = 0;
 		}
 

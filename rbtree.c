@@ -54,6 +54,40 @@ static void rb_set_color(struct rb_node *node, enum rb_node_color color)
 }
 
 /**
+ * rb_set_parent_color() - Set parent and color of node
+ * @node: pointer to the rb node
+ * @parent: pointer to the new parent node
+ * @color: new color of the node
+ */
+static void rb_set_parent_color(struct rb_node *node, struct rb_node *parent,
+				enum rb_node_color color)
+{
+#ifndef RB_PARENT_COLOR_COMBINATION
+	node->parent = parent;
+	node->color = color;
+#else
+	node->parent_color = (unsigned long)parent | color;
+#endif
+}
+
+/**
+ * rb_is_red() - Check if node is red
+ * @node: Node to check
+ *
+ * Return: 0 when @node is NULL or not red, 1 if @node is red
+ */
+static int rb_is_red(struct rb_node *node)
+{
+	if (!node)
+		return 0;
+
+	if (rb_color(node) == RB_RED)
+		return 1;
+	else
+		return 0;
+}
+
+/**
  * rb_change_child() - Fix child entry of parent node
  * @old_node: rb node to replace
  * @new_node: rb node replacing @old_node
@@ -123,7 +157,7 @@ static void rb_rotate_switch_parents(struct rb_node *node_top,
  * When the tree was a LLRB before the link of the new node then the resulting
  * tree will again be a LLRB tree
  */
-void rb_insert_color(struct rb_node *node, struct rb_root *root)
+static void rb_insert_color(struct rb_node *node, struct rb_root *root)
 {
 	struct rb_node *parent;
 	struct rb_node *tmp;
@@ -182,6 +216,45 @@ void rb_insert_color(struct rb_node *node, struct rb_root *root)
 
 		node = parent;
 	}
+}
+
+/**
+ * rb_link_node() - Add new node as new leaf
+ * @node: pointer to the new node
+ * @parent: pointer to the parent node
+ * @rb_link: pointer to the left/right pointer of @parent
+ *
+ * @node will be initialized as leaf node of @parent. It will be linked to the
+ * tree via the @rb_link pointer. @parent must be NULL and @rb_link has to point
+ * to "node" of rb_root when the tree is empty.
+ *
+ * WARNING The new node may cause the tree to be become unbalanced or violate
+ * any rules of the red black tree. A call to rb_insert_color after rb_link_node
+ * is therefore always required to rebalance the tree correctly. rb_insert
+ * can be used as helper to run both steps at the same time.
+ */
+static void rb_link_node(struct rb_node *node, struct rb_node *parent,
+			 struct rb_node **rb_link)
+{
+	rb_set_parent_color(node, parent, RB_RED);
+	node->left = NULL;
+	node->right = NULL;
+
+	*rb_link = node;
+}
+
+/**
+ * rb_insert() - Add new node as new leaf and rebalance tree
+ * @node: pointer to the new node
+ * @parent: pointer to the parent node
+ * @rb_link: pointer to the left/right pointer of @parent
+ * @root: pointer to rb root
+ */
+void rb_insert(struct rb_node *node, struct rb_node *parent,
+	       struct rb_node **rb_link, struct rb_root *root)
+{
+	rb_link_node(node, parent, rb_link);
+	rb_insert_color(node, root);
 }
 
 /**
@@ -486,14 +559,14 @@ static void rb_erase_right_recolor_black(struct rb_node *parent)
  * Return: node which is double black and has to be rebalanced, NULL if no
  *  rebalance is necessary
  */
-struct rb_node *rb_erase_node(struct rb_node *node, struct rb_root *root)
+static struct rb_node *rb_erase_node(struct rb_node *node, struct rb_root *root)
 {
 	struct rb_node *smallest;
 	struct rb_node *smallest_parent;
 	struct rb_node *dblack;
 	enum rb_node_color smallest_color;
 
-	if (!node->left && !node->right) {
+	if (!node->left) {
 		/* no child
 		 * just delete the current child
 		 */
@@ -508,7 +581,7 @@ struct rb_node *rb_erase_node(struct rb_node *node, struct rb_root *root)
 			return NULL;
 		else
 			return rb_parent(node);
-	} else if (node->left && !node->right) {
+	} else if (!node->right) {
 		/* one child, left
 		 * use left child as replacement for the deleted node
 		 */
@@ -519,20 +592,6 @@ struct rb_node *rb_erase_node(struct rb_node *node, struct rb_root *root)
 		 * (3-node). Otherwise the subtrees would have different
 		 * heights. So the child gets black and the red link is dropped.
 		 * Nothing to rebalance anymore
-		 */
-		return NULL;
-	} else if (!node->left) {
-		/* one child, right
-		 * use right child as replacement for the deleted node
-		 */
-		rb_set_parent_color(node->right, rb_parent(node), RB_BLACK);
-		rb_change_child(node, node->right, rb_parent(node), root);
-
-		/* the right child must be red when there is no left child
-		 * (3-node). Otherwise the subtrees would have different
-		 * heights. But this is a LLRB and thus a right red child
-		 * never happens after a rebalance. Still leaving this when
-		 * function is (mis)used for non-LLRB
 		 */
 		return NULL;
 	}
@@ -549,13 +608,6 @@ struct rb_node *rb_erase_node(struct rb_node *node, struct rb_root *root)
 	else
 		dblack = smallest_parent;
 
-	/* move right child of smallest one up
-	 * But this is a LLRB and thus a right child with no left child never
-	 * happens after a rebalance. Still leaving this when function is
-	 * (mis)used for non-LLRB
-	 */
-	if (smallest->right)
-		rb_set_parent(smallest->right, smallest_parent);
 	rb_change_child(smallest, smallest->right, smallest_parent, root);
 
 	/* exchange node with smallest */
@@ -593,7 +645,7 @@ struct rb_node *rb_erase_node(struct rb_node *node, struct rb_root *root)
  * When the tree was a LLRB before the erase of the node then the resulting
  * tree will again be a LLRB tree
  */
-void rb_erase_color(struct rb_node *parent, struct rb_root *root)
+static void rb_erase_color(struct rb_node *parent, struct rb_root *root)
 {
 	struct rb_node *gparent;
 	int coming_from_right = 0;
@@ -657,6 +709,20 @@ void rb_erase_color(struct rb_node *parent, struct rb_root *root)
 
 		parent = gparent;
 	}
+}
+
+/**
+ * rb_erase() - Remove rb node from tree and rebalance tree
+ * @node: pointer to the node
+ * @root: pointer to rb root
+ */
+void rb_erase(struct rb_node *node, struct rb_root *root)
+{
+	struct rb_node *dblack_node;
+
+	dblack_node = rb_erase_node(node, root);
+	if (dblack_node)
+		rb_erase_color(dblack_node, root);
 }
 
 /**

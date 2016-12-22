@@ -42,7 +42,7 @@ int main(void)
 
 	INIT_RB_ROOT(&root);
 	items[0].i = 0;
-	rbitem_insert_unbalanced(&root, &items[0]);
+	rbitem_insert(&root, &items[0]);
 	assert(rb_prev(&items[0].rb) == NULL);
 
 	for (i = 0; i < 256; i++) {
@@ -54,7 +54,7 @@ int main(void)
 
 		for (j = 0; j < ARRAY_SIZE(values); j++) {
 			items[j].i = values[j];
-			rbitem_insert_unbalanced(&root, &items[j]);
+			rbitem_insert(&root, &items[j]);
 		}
 
 		for (node = rb_last(&root), j = 0;

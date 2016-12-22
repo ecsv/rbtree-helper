@@ -30,8 +30,8 @@
 #include "../rbtree.h"
 #include "common.h"
 
-static __inline__ void rbitem_insert_unbalanced(struct rb_root *root,
-						struct rbitem *new_entry)
+static __inline__ void rbitem_insert(struct rb_root *root,
+				     struct rbitem *new_entry)
 {
 	struct rb_node *parent = NULL;
 	struct rb_node **cur_nodep = &root->node;
@@ -47,14 +47,7 @@ static __inline__ void rbitem_insert_unbalanced(struct rb_root *root,
 			cur_nodep = &((*cur_nodep)->right);
 	}
 
-	rb_link_node(&new_entry->rb, parent, cur_nodep);
-}
-
-static __inline__ void rbitem_insert_balanced(struct rb_root *root,
-					      struct rbitem *new_entry)
-{
-	rbitem_insert_unbalanced(root, new_entry);
-	rb_insert_color(&new_entry->rb, root);
+	rb_insert(&new_entry->rb, parent, cur_nodep, root);
 }
 
 static __inline__ struct rbitem *rbitem_find(struct rb_root *root, uint16_t x)

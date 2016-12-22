@@ -83,13 +83,13 @@ int main(void)
 				assert(item);
 
 				item->i = values[inserted];
-				rb_prioqueue_insert_balanced(&queue, item);
+				rb_prioqueue_insert(&queue, item);
 
 				valuequeue[queuelen] = values[inserted];
 				inserted++;
 				queuelen++;
 			} else {
-				item = rb_prioqueue_pop_balanced(&queue);
+				item = rb_prioqueue_pop(&queue);
 
 				if (queuelen) {
 					assert(item);

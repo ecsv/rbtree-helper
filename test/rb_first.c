@@ -56,7 +56,7 @@ int main(void)
 				minval = values[j];
 
 			items[j].i = values[j];
-			rbitem_insert_unbalanced(&root, &items[j]);
+			rbitem_insert(&root, &items[j]);
 
 			node = rb_first(&root);
 			assert(node);

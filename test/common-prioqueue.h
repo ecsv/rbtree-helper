@@ -41,51 +41,7 @@ static __inline__ void rb_prioqueue_init(struct rb_prioqueue *queue)
 }
 
 static __inline__ void
-rb_prioqueue_insert_unbalanced(struct rb_prioqueue *queue,
-			       struct rbitem *new_entry)
-{
-	struct rb_node *parent = NULL;
-	struct rb_node **cur_nodep = &queue->root.node;
-	struct rbitem *cur_entry;
-	int isminimal = 1;
-
-	while (*cur_nodep) {
-		cur_entry = rb_entry(*cur_nodep, struct rbitem, rb);
-
-		parent = *cur_nodep;
-		if (cmpint(&new_entry->i, &cur_entry->i) <= 0) {
-			cur_nodep = &((*cur_nodep)->left);
-		} else {
-			cur_nodep = &((*cur_nodep)->right);
-			isminimal = 0;
-		}
-	}
-
-	if (isminimal)
-		queue->min_node = &new_entry->rb;
-
-	rb_link_node(&new_entry->rb, parent, cur_nodep);
-}
-
-static __inline__ struct rbitem *
-rb_prioqueue_pop_unbalanced(struct rb_prioqueue *queue)
-{
-	struct rbitem *item;
-
-	if (!queue->min_node)
-		return NULL;
-
-	item = rb_entry(queue->min_node, struct rbitem, rb);
-	queue->min_node = rb_next(queue->min_node);
-
-	rb_erase_node(&item->rb, &queue->root);
-
-	return item;
-}
-
-static __inline__ void
-rb_prioqueue_insert_balanced(struct rb_prioqueue *queue,
-			       struct rbitem *new_entry)
+rb_prioqueue_insert(struct rb_prioqueue *queue, struct rbitem *new_entry)
 {
 	struct rb_node *parent = NULL;
 	struct rb_node **cur_nodep = &queue->root.node;
@@ -110,8 +66,7 @@ rb_prioqueue_insert_balanced(struct rb_prioqueue *queue,
 	rb_insert(&new_entry->rb, parent, cur_nodep, &queue->root);
 }
 
-static __inline__ struct rbitem *
-rb_prioqueue_pop_balanced(struct rb_prioqueue *queue)
+static __inline__ struct rbitem *rb_prioqueue_pop(struct rb_prioqueue *queue)
 {
 	struct rbitem *item;
 

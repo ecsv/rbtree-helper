@@ -47,9 +47,8 @@ int main(void)
 		INIT_RB_ROOT(&root);
 		for (j = 0; j < ARRAY_SIZE(values); j++) {
 			items[j].i = values[j];
-			rbitem_insert_unbalanced(&root, &items[j]);
+			rbitem_insert(&root, &items[j]);
 			skiplist[values[j]] = 0;
-			rb_insert_color(&items[j].rb, &root);
 
 			check_root_order(&root, skiplist,
 					 (uint16_t)ARRAY_SIZE(skiplist));

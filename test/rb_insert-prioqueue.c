@@ -47,11 +47,11 @@ int main(void)
 			assert(item);
 
 			item->i = values[j];
-			rb_prioqueue_insert_balanced(&queue, item);
+			rb_prioqueue_insert(&queue, item);
 		}
 
 		for (j = 0; j < ARRAY_SIZE(values); j++) {
-			item = rb_prioqueue_pop_balanced(&queue);
+			item = rb_prioqueue_pop(&queue);
 			assert(item);
 			assert(item->i == j);
 
