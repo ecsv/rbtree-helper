@@ -100,7 +100,7 @@ clean:
 	@$(RM) $(TESTS_ALL) $(DEP) $(TESTS_OK) $(TESTS:=.o) $(TESTS:=.d) rbtree.o rbtree.d
 
 # load dependencies
-DEP = $(TESTS:=.d)
+DEP = $(TESTS:=.d) rbtree.d
 -include $(DEP)
 
 .PHONY: all clean
