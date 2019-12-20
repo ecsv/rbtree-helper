@@ -1,12 +1,17 @@
-sudo: required
-dist: trusty
+# SPDX-License-Identifier: MIT
+#
+# SPDX-FileCopyrightText: 2012-2016, Sven Eckelmann <sven@narfation.org>
+
+sudo: false
+dist: xenial
 language: cpp
 compiler:
   - gcc
   - clang
-before_install:
-  - sudo apt-get update -qq
-  - sudo apt-get install -y valgrind
+addons:
+  apt:
+    packages:
+    - valgrind
 after_success:
   - cd test && bash <(curl -s https://codecov.io/bash)
 env:
@@ -17,5 +22,21 @@ env:
    - BUILD_CXX=1 CFLAGS="-O3"
    - BUILD_CXX=0 TESTRUN_WRAPPER='valgrind -q --error-exitcode=126 --track-origins=yes --leak-check=full' CFLAGS="-O1 -g3" TESTRUN_NAME=memcheck
    - BUILD_CXX=1 TESTRUN_WRAPPER='valgrind -q --error-exitcode=126 --track-origins=yes --leak-check=full' CFLAGS="-O1 -g3" TESTRUN_NAME=memcheck
+   - BUILD_CXX=0 CFLAGS="-g3 -fsanitize=undefined -fsanitize=address -fsanitize=leak"
+   - BUILD_CXX=1 CFLAGS="-g3 -fsanitize=undefined -fsanitize=address -fsanitize=leak"
 script:
  - make -C test clean && make -j$(nproc) -C test
+
+matrix:
+  include:
+    - os: linux
+      language: minimal
+      services:
+      - docker
+      env:
+      - REUSE_TEST=1
+      before_install:
+      - docker pull fsfe/reuse:latest
+      - docker run --name reuse -v ${TRAVIS_BUILD_DIR}:/repo fsfe/reuse /bin/sh -c "cd /repo; reuse lint"
+      script:
+      - true
